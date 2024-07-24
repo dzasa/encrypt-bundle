@@ -2,7 +2,6 @@
 
 namespace SpecShaper\EncryptBundle\Subscribers;
 
-use Doctrine\Common\Annotations\Reader;
 use Doctrine\ORM\Event\PostUpdateEventArgs;
 use Doctrine\Persistence\Event\LifecycleEventArgs;
 use Doctrine\ORM\Event\OnFlushEventArgs;
@@ -20,7 +19,6 @@ interface DoctrineEncryptSubscriberInterface
 
     public function __construct(
         LoggerInterface $logger,
-        Reader $annReader,
         EncryptorInterface $encryptor,
         array $annotationArray,
         bool $isDisabled
