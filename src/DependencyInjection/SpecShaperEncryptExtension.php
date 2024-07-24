@@ -50,8 +50,8 @@ class SpecShaperEncryptExtension extends Extension
         $doctrineSubscriber = new Definition($config['subscriber_class']);
         $doctrineSubscriber
             ->setAutowired(true)
-            ->setArgument(3, $config['annotation_classes'])
-            ->setArgument(4, $config['is_disabled'])
+            ->setArgument(2, $config['annotation_classes'])
+            ->setArgument(3, $config['is_disabled'])
         ;
 
         $encryptEventSubscriber = new Definition(EncryptEventSubscriber::class);
