@@ -152,7 +152,7 @@ class EncryptDatabaseCommand extends Command
         return $this->encryptedFields;
     }
 
-    private function isEncryptedProperty(\ReflectionProperty $refProperty)
+    private function isEncryptedProperty(\ReflectionProperty $refProperty): bool
     {
 
         foreach ($refProperty->getAttributes() as $refAttribute) {

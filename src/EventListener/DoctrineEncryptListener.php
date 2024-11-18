@@ -1,24 +1,23 @@
 <?php
 
-namespace SpecShaper\EncryptBundle\Subscribers;
+namespace SpecShaper\EncryptBundle\EventListener;
 
-use Doctrine\Bundle\DoctrineBundle\EventSubscriber\EventSubscriberInterface;
-use Doctrine\Common\EventSubscriber;
-use Doctrine\Common\Util\ClassUtils;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Event\OnFlushEventArgs;
 use Doctrine\ORM\Events;
 use Doctrine\Persistence\Event\LifecycleEventArgs;
 use ReflectionProperty;
-use SpecShaper\EncryptBundle\Annotations\Encrypted;
 use SpecShaper\EncryptBundle\Encryptors\EncryptorInterface;
 use SpecShaper\EncryptBundle\Exception\EncryptException;
-use Psr\Log\LoggerInterface;
+use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 
 /**
- * Doctrine event subscriber which encrypt/decrypt entities.
+ * Doctrine event listener which encrypts/decrypts entities.
  */
-class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEncryptSubscriberInterface
+#[AsDoctrineListener(event: Events::postLoad, priority: 500)]
+#[AsDoctrineListener(event: Events::postUpdate, priority: 500)]
+#[AsDoctrineListener(event: Events::onFlush, priority: 500)]
+class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
 {
     /**
      * Encryptor interface namespace.
@@ -42,8 +41,8 @@ class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEnc
     private bool $isDisabled;
 
     public function __construct(
-        private readonly LoggerInterface $logger,
         private readonly EncryptorInterface $encryptor,
+        private readonly EntityManagerInterface $em,
         array $annotationArray,
         bool $isDisabled
     ) {
@@ -62,25 +61,11 @@ class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEnc
      * Used to programmatically disable encryption on flush operations.
      * Decryption still occurs if values have the <ENC> suffix.
      */
-    public function setIsDisabled(?bool $isDisabled = true): DoctrineEncryptSubscriberInterface
+    public function setIsDisabled(?bool $isDisabled = true): DoctrineEncryptListenerInterface
     {
         $this->isDisabled = $isDisabled;
 
         return $this;
-    }
-
-    /**
-     * Realization of EventSubscriber interface method.
-     *
-     * @return array Return all events which this subscriber is listening
-     */
-    public function getSubscribedEvents(): array
-    {
-        return [
-            Events::postLoad,
-            Events::postUpdate,
-            Events::onFlush,
-        ];
     }
 
     /**
@@ -92,15 +77,14 @@ class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEnc
             return;
         }
 
-        $em = $args->getObjectManager();
-        $unitOfWork = $em->getUnitOfWork();
+        $unitOfWork = $this->em->getUnitOfWork();
 
         foreach ($unitOfWork->getScheduledEntityInsertions() as $entity) {
-            $this->processFields($entity, $em, true, true);
+            $this->processFields($entity, true, true);
         }
 
         foreach ($unitOfWork->getScheduledEntityUpdates() as $entity) {
-            $this->processFields($entity, $em, true, false);
+            $this->processFields($entity, true, false);
         }
     }
 
@@ -115,7 +99,7 @@ class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEnc
         $entity = $args->getObject();
 
         // Decrypt the entity fields.
-        $this->processFields($entity, $args->getObjectManager(), false, false);
+        $this->processFields($entity, false, false);
     }
 
     /**
@@ -146,7 +130,7 @@ class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEnc
     /**
      * Process (encrypt/decrypt) entities fields.
      */
-    protected function processFields(object $entity, EntityManagerInterface $em, bool $isEncryptOperation, bool $isInsert): bool
+    protected function processFields(object $entity, bool $isEncryptOperation, bool $isInsert): bool
     {
         // Get the encrypted properties in the entity.
         $properties = $this->getEncryptedFields($entity);
@@ -156,9 +140,9 @@ class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEnc
             return false;
         }
 
-        $unitOfWork = $em->getUnitOfWork();
+        $unitOfWork = $this->em->getUnitOfWork();
         $oid = spl_object_id($entity);
-        $meta = $em->getClassMetadata(get_class($entity));
+        $meta = $this->em->getClassMetadata(get_class($entity));
 
         foreach ($properties as $refProperty) {
 
@@ -215,12 +199,11 @@ class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEnc
     public function postUpdate(LifecycleEventArgs $args): void
     {
         $entity = $args->getObject();
-        $em = $args->getObjectManager();
-
         $oid = spl_object_id($entity);
+
         if (isset($this->rawValues[$oid])) {
             $className = get_class($entity);
-            $meta = $em->getClassMetadata($className);
+            $meta = $this->em->getClassMetadata($className);
             foreach ($this->rawValues[$oid] as $prop => $rawValue) {
                 $refProperty = $meta->getReflectionProperty($prop);
                 $refProperty->setValue($entity, $rawValue);
@@ -264,7 +247,6 @@ class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEnc
 
         // If PHP8, and has attributes.
         if(method_exists($refProperty, 'getAttributes')) {
-
             foreach ($refProperty->getAttributes() as $refAttribute) {
                 if (in_array($refAttribute->getName(), $this->annotationArray)) {
                     return true;
@@ -277,7 +259,7 @@ class DoctrineEncryptSubscriber implements EventSubscriberInterface, DoctrineEnc
 
     protected function getOriginalEntityReflection($entity): \ReflectionClass
     {
-        $realClassName = ClassUtils::getClass($entity);
+        $realClassName = $this->em->getClassMetadata(get_class($entity))->getName();
         return new \ReflectionClass($realClassName);
     }
 }
