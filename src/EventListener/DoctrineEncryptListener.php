@@ -10,6 +10,7 @@ use ReflectionProperty;
 use SpecShaper\EncryptBundle\Encryptors\EncryptorInterface;
 use SpecShaper\EncryptBundle\Exception\EncryptException;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
+use Doctrine\ORM\UnitOfWork;
 
 /**
  * Doctrine event listener which encrypts/decrypts entities.
