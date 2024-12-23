@@ -137,7 +137,7 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
 
     $processed = $this->processEntityFields($entity, $isEncryptOperation, $isInsert, $unitOfWork, $meta);
 
-    // Process embeddables
+    // Process embeddable
     foreach ($meta->embeddedClasses as $embeddedField => $embeddedClass) {
         $embeddedEntity = $meta->getFieldValue($entity, $embeddedField);
         if ($embeddedEntity) {
@@ -183,7 +183,7 @@ protected function processEntityFields(object $entity, bool $isEncryptOperation,
         }
 
         if (is_object($value)) {
-            throw new EncryptException('Cannot encrypt an object at '.$refProperty->class.':'.$refProperty->getName(), $value);
+            continue;
         }
 
         // Encryption is fired by onFlush event, else it is an onLoad event.
