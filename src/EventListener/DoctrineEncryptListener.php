@@ -175,7 +175,12 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
             $field = $refProperty->getName();
 
             // Get the value in the entity.
-            $value = $refProperty->getValue($entity);
+            try {
+                $value = $refProperty->getValue($entity);
+            } catch (\ReflectionException $e) {
+                // If we can't get the value, skip this property
+                continue;
+            }
 
             // Skip any null values.
             if (null === $value) {
@@ -183,6 +188,9 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
             }
 
             if (is_object($value)) {
+                // If the value is an object, we need to process it recursively
+                $embeddedMeta = $this->em->getClassMetadata(get_class($value));
+                $this->processEntityFields($value, $isEncryptOperation, $isInsert, $unitOfWork, $embeddedMeta, $entity, $field);
                 continue;
             }
 
@@ -270,6 +278,19 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
             foreach ($embeddedProperties as $refProperty) {
                 if ($this->isEncryptedProperty($refProperty)) {
                     $encryptedFields[] = $refProperty;
+                }
+            }
+
+            // Check for nested embedded objects
+            $embeddedMeta = $this->em->getClassMetadata($embeddedClass['class']);
+            foreach ($embeddedMeta->embeddedClasses as $nestedEmbeddedField => $nestedEmbeddedClass) {
+                $nestedEmbeddedReflection = new \ReflectionClass($nestedEmbeddedClass['class']);
+                $nestedEmbeddedProperties = $nestedEmbeddedReflection->getProperties();
+
+                foreach ($nestedEmbeddedProperties as $refProperty) {
+                    if ($this->isEncryptedProperty($refProperty)) {
+                        $encryptedFields[] = $refProperty;
+                    }
                 }
             }
         }
