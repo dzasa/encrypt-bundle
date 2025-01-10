@@ -255,20 +255,21 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
 
         $encryptedFields = [];
 
-        foreach ($properties as $key => $refProperty) {
+        foreach ($properties as $refProperty) {
             if ($this->isEncryptedProperty($refProperty)) {
-                $encryptedFields[$key] = $refProperty;
+                $encryptedFields[] = $refProperty;
             }
         }
 
         // Handle embedded properties
-        foreach ($this->em->getClassMetadata($className)->embeddedClasses as $embeddedField => $embeddedClass) {
+        $meta = $this->em->getClassMetadata($className);
+        foreach ($meta->embeddedClasses as $embeddedField => $embeddedClass) {
             $embeddedReflection = new \ReflectionClass($embeddedClass['class']);
             $embeddedProperties = $embeddedReflection->getProperties();
 
-            foreach ($embeddedProperties as $key => $refProperty) {
+            foreach ($embeddedProperties as $refProperty) {
                 if ($this->isEncryptedProperty($refProperty)) {
-                    $encryptedFields[$embeddedField . '.' . $key] = $refProperty;
+                    $encryptedFields[] = $refProperty;
                 }
             }
         }
