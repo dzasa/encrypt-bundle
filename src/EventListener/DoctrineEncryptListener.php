@@ -107,7 +107,7 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
     /**
      * Decrypt a value.
      *
-     * If the value is an object, or if it does not contain the suffic <ENC> then return the value iteslf back.
+     * If the value is an object, or if it does not contain the suffix <ENC> then return the value itself back.
      * Otherwise, decrypt the value and return.
      */
     public function decryptValue(?string $value, ?string $columnName): ?string
@@ -130,96 +130,96 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
     }
 
     protected function processFields(object $entity, bool $isEncryptOperation, bool $isInsert): bool
-{
-    $unitOfWork = $this->em->getUnitOfWork();
-    $oid = spl_object_id($entity);
-    $meta = $this->em->getClassMetadata(get_class($entity));
+    {
+        $unitOfWork = $this->em->getUnitOfWork();
+        $oid = spl_object_id($entity);
+        $meta = $this->em->getClassMetadata(get_class($entity));
 
-    $processed = $this->processEntityFields($entity, $isEncryptOperation, $isInsert, $unitOfWork, $meta);
+        $processed = $this->processEntityFields($entity, $isEncryptOperation, $isInsert, $unitOfWork, $meta);
 
-    // Process embeddable
-    foreach ($meta->embeddedClasses as $embeddedField => $embeddedClass) {
-        $embeddedEntity = $meta->getFieldValue($entity, $embeddedField);
-        if ($embeddedEntity) {
-            $embeddedMeta = $this->em->getClassMetadata($embeddedClass['class']);
-            $processed |= $this->processEntityFields($embeddedEntity, $isEncryptOperation, $isInsert, $unitOfWork, $embeddedMeta, $entity, $embeddedField);
+        // Process embeddable
+        foreach ($meta->embeddedClasses as $embeddedField => $embeddedClass) {
+            $embeddedEntity = $meta->getFieldValue($entity, $embeddedField);
+            if ($embeddedEntity) {
+                $embeddedMeta = $this->em->getClassMetadata($embeddedClass['class']);
+                $processed |= $this->processEntityFields($embeddedEntity, $isEncryptOperation, $isInsert, $unitOfWork, $embeddedMeta, $entity, $embeddedField);
+            }
         }
+
+        if ($isInsert && isset($this->rawValues[$oid])) {
+            // Restore the decrypted values after the change set update
+            foreach ($this->rawValues[$oid] as $prop => $rawValue) {
+                $refProperty = $meta->getReflectionProperty($prop);
+                $refProperty->setValue($entity, $rawValue);
+            }
+
+            unset($this->rawValues[$oid]);
+        }
+
+        return $processed;
     }
 
-    if ($isInsert && isset($this->rawValues[$oid])) {
-        // Restore the decrypted values after the change set update
-        foreach ($this->rawValues[$oid] as $prop => $rawValue) {
-            $refProperty = $meta->getReflectionProperty($prop);
-            $refProperty->setValue($entity, $rawValue);
+    protected function processEntityFields(object $entity, bool $isEncryptOperation, bool $isInsert, UnitOfWork $unitOfWork, ClassMetadata $meta, ?object $parentEntity = null, ?string $embeddedField = null): bool
+    {
+        // Get the encrypted properties in the entity.
+        $properties = $this->getEncryptedFields($entity);
+
+        // If no encrypted properties, return false.
+        if (empty($properties)) {
+            return false;
         }
 
-        unset($this->rawValues[$oid]);
-    }
+        $oid = spl_object_id($entity);
 
-    return $processed;
-}
+        foreach ($properties as $refProperty) {
+            $field = $refProperty->getName();
 
-protected function processEntityFields(object $entity, bool $isEncryptOperation, bool $isInsert, UnitOfWork $unitOfWork, ClassMetadata $meta, ?object $parentEntity = null, ?string $embeddedField = null): bool
-{
-    // Get the encrypted properties in the entity.
-    $properties = $this->getEncryptedFields($entity);
+            // Get the value in the entity.
+            $value = $refProperty->getValue($entity);
 
-    // If no encrypted properties, return false.
-    if (empty($properties)) {
-        return false;
-    }
+            // Skip any null values.
+            if (null === $value) {
+                continue;
+            }
 
-    $oid = spl_object_id($entity);
+            if (is_object($value)) {
+                continue;
+            }
 
-    foreach ($properties as $refProperty) {
-        $field = $refProperty->getName();
+            // Encryption is fired by onFlush event, else it is an onLoad event.
+            if ($isEncryptOperation) {
+                $changeSet = $parentEntity ? $unitOfWork->getEntityChangeSet($parentEntity) : $unitOfWork->getEntityChangeSet($entity);
 
-        // Get the value in the entity.
-        $value = $refProperty->getValue($entity);
+                // Encrypt value only if change has been detected by Doctrine (comparing unencrypted values, see postLoad flow)
+                if (isset($changeSet[$embeddedField ? $embeddedField : $field])) {
+                    $encryptedValue = $this->encryptor->encrypt($value, $field);
+                    $refProperty->setValue($entity, $encryptedValue);
 
-        // Skip any null values.
-        if (null === $value) {
-            continue;
-        }
+                    if ($parentEntity) {
+                        $unitOfWork->recomputeSingleEntityChangeSet($meta, $parentEntity);
+                    } else {
+                        $unitOfWork->recomputeSingleEntityChangeSet($meta, $entity);
+                    }
 
-        if (is_object($value)) {
-            continue;
-        }
-
-        // Encryption is fired by onFlush event, else it is an onLoad event.
-        if ($isEncryptOperation) {
-            $changeSet = $parentEntity ? $unitOfWork->getEntityChangeSet($parentEntity) : $unitOfWork->getEntityChangeSet($entity);
-
-            // Encrypt value only if change has been detected by Doctrine (comparing unencrypted values, see postLoad flow)
-            if (isset($changeSet[$embeddedField ? $embeddedField : $field])) {
-                $encryptedValue = $this->encryptor->encrypt($value, $field);
-                $refProperty->setValue($entity, $encryptedValue);
-                
-                if ($parentEntity) {
-                    $unitOfWork->recomputeSingleEntityChangeSet($meta, $parentEntity);
-                } else {
-                    $unitOfWork->recomputeSingleEntityChangeSet($meta, $entity);
+                    // Will be restored during postUpdate cycle for updates, or below for inserts
+                    $this->rawValues[$oid][$field] = $value;
                 }
-
-                // Will be restored during postUpdate cycle for updates, or below for inserts
-                $this->rawValues[$oid][$field] = $value;
-            }
-        } else {
-            // Decryption is fired by onLoad and postFlush events.
-            $decryptedValue = $this->decryptValue($value, $field);
-            $refProperty->setValue($entity, $decryptedValue);
-
-            // Tell Doctrine the original value was the decrypted one.
-            if ($parentEntity) {
-                $unitOfWork->setOriginalEntityProperty(spl_object_id($parentEntity), $embeddedField, $parentEntity->$embeddedField);
             } else {
-                $unitOfWork->setOriginalEntityProperty($oid, $field, $decryptedValue);
+                // Decryption is fired by onLoad and postFlush events.
+                $decryptedValue = $this->decryptValue($value, $field);
+                $refProperty->setValue($entity, $decryptedValue);
+
+                // Tell Doctrine the original value was the decrypted one.
+                if ($parentEntity) {
+                    $unitOfWork->setOriginalEntityProperty(spl_object_id($parentEntity), $embeddedField, $parentEntity->$embeddedField);
+                } else {
+                    $unitOfWork->setOriginalEntityProperty($oid, $field, $decryptedValue);
+                }
             }
         }
-    }
 
-    return true;
-}
+        return true;
+    }
 
     public function postUpdate(LifecycleEventArgs $args): void
     {
@@ -256,9 +256,20 @@ protected function processEntityFields(object $entity, bool $isEncryptOperation,
         $encryptedFields = [];
 
         foreach ($properties as $key => $refProperty) {
-
             if ($this->isEncryptedProperty($refProperty)) {
                 $encryptedFields[$key] = $refProperty;
+            }
+        }
+
+        // Handle embedded properties
+        foreach ($this->em->getClassMetadata($className)->embeddedClasses as $embeddedField => $embeddedClass) {
+            $embeddedReflection = new \ReflectionClass($embeddedClass['class']);
+            $embeddedProperties = $embeddedReflection->getProperties();
+
+            foreach ($embeddedProperties as $key => $refProperty) {
+                if ($this->isEncryptedProperty($refProperty)) {
+                    $encryptedFields[$embeddedField . '.' . $key] = $refProperty;
+                }
             }
         }
 
@@ -269,7 +280,6 @@ protected function processEntityFields(object $entity, bool $isEncryptOperation,
 
     private function isEncryptedProperty(ReflectionProperty $refProperty)
     {
-
         // If PHP8, and has attributes.
         if(method_exists($refProperty, 'getAttributes')) {
             foreach ($refProperty->getAttributes() as $refAttribute) {
