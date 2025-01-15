@@ -48,7 +48,7 @@ class AesGcmEncryptor implements EncryptorInterface
     /**
      * @throws \Exception
      */
-    public function encrypt(?string $data, ?string $columnName): ?string
+    public function encrypt(?string $data, ?string $columnName = null): ?string
     {
         if (is_null($data)) {
             return null;
@@ -84,7 +84,7 @@ class AesGcmEncryptor implements EncryptorInterface
     /**
      * @throws \Exception
      */
-    public function decrypt(?string $data, ?string $columnName): ?string
+    public function decrypt(?string $data, ?string $columnName = null): ?string
     {
         if (is_null($data)) {
             return null;
