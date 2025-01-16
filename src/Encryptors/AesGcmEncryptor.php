@@ -74,6 +74,7 @@ class AesGcmEncryptor implements EncryptorInterface
             $associatedData
         );
 
+        dump($associatedData);
         if ($ciphertext === false) {
             throw new EncryptException('Encryption failed.');
         }
