@@ -118,7 +118,6 @@ class AesGcmEncryptor implements EncryptorInterface
 
         if ($plaintext === false) {
             print_r(openssl_error_string());
-            print_r(error_get_last());
             print_r($data);
             print_r($iv);
             print_r($tag);
