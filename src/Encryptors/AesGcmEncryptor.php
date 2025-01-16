@@ -122,7 +122,7 @@ class AesGcmEncryptor implements EncryptorInterface
             dump($iv);
             dump($tag);
             dump($ciphertext);
-            dump($key);
+            dump(base64_encode($key));
             dump($columnName ?? '');
             dump($ivsize);
             throw new EncryptException('Decryption failed.');
