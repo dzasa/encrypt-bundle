@@ -113,7 +113,7 @@ class AesGcmEncryptor implements EncryptorInterface
             OPENSSL_RAW_DATA,
             $iv,
             $tag,
-            $columnName
+            $columnName ?? ''
         );
 
         if ($plaintext === false) {
