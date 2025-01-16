@@ -117,14 +117,14 @@ class AesGcmEncryptor implements EncryptorInterface
         );
 
         if ($plaintext === false) {
-            print_r(openssl_error_string());
-            print_r($data);
-            print_r($iv);
-            print_r($tag);
-            print_r($ciphertext);
-            print_r($key);
-            print_r($columnName ?? '');
-            print_r($ivsize);
+            dump(openssl_error_string());
+            dump($data);
+            dump($iv);
+            dump($tag);
+            dump($ciphertext);
+            dump($key);
+            dump($columnName ?? '');
+            dump($ivsize);
             throw new EncryptException('Decryption failed.');
         }
 
