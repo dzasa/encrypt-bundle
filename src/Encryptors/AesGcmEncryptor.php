@@ -118,7 +118,7 @@ class AesGcmEncryptor implements EncryptorInterface
 
         if ($plaintext === false) {
             dump(openssl_error_string());
-            dump($data);
+            dump(base64_encode($data));
             dump($iv);
             dump($tag);
             dump($ciphertext);
