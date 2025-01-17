@@ -35,9 +35,9 @@ class AesGcmEncryptor implements EncryptorInterface
         return self::class.':'.self::METHOD;
     }
 
-    public function setSecretKey(string $secretKey): void
+    public function setSecretKey(string $key): void
     {
-        $this->secretKey = $secretKey;
+        $this->secretKey = $key;
     }
 
     public function setDefaultAssociatedData(?string $defaultAssociatedData): void
@@ -59,8 +59,8 @@ class AesGcmEncryptor implements EncryptorInterface
         }
 
         $key = $this->getSecretKey();
-        $ivsize = openssl_cipher_iv_length(self::METHOD);
-        $iv = openssl_random_pseudo_bytes($ivsize);
+        $ivSize = openssl_cipher_iv_length(self::METHOD);
+        $iv = openssl_random_pseudo_bytes($ivSize);
         $tag = '';
         $associatedData = $columnName ?? $this->defaultAssociatedData;
 
@@ -101,10 +101,11 @@ class AesGcmEncryptor implements EncryptorInterface
 
         $key = $this->getSecretKey();
         $data = base64_decode($data);
-        $ivsize = openssl_cipher_iv_length(self::METHOD);
-        $iv = mb_substr($data, 0, $ivsize, '8bit');
-        $tag = mb_substr($data, $ivsize, 16, '8bit');
-        $ciphertext = mb_substr($data, $ivsize + 16, null, '8bit');
+        $ivSize = openssl_cipher_iv_length(self::METHOD);
+        $iv = mb_substr($data, 0, $ivSize, '8bit');
+        $tag = mb_substr($data, $ivSize, 16, '8bit');
+        $ciphertext = mb_substr($data, $ivSize + 16, null, '8bit');
+        $associatedData = $columnName ?? $this->defaultAssociatedData;
 
         $plaintext = openssl_decrypt(
             $ciphertext,
@@ -113,7 +114,7 @@ class AesGcmEncryptor implements EncryptorInterface
             OPENSSL_RAW_DATA,
             $iv,
             $tag,
-            $columnName ?? ''
+            $associatedData
         );
 
         if ($plaintext === false) {

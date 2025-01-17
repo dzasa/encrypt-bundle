@@ -37,9 +37,9 @@ class AesCbcEncryptor implements EncryptorInterface
         return self::class.':'.self::METHOD;
     }
 
-    public function setSecretKey(string $secretKey): void
+    public function setSecretKey(string $key): void
     {
-        $this->secretKey = $secretKey;
+        $this->secretKey = $key;
     }
 
     /**
