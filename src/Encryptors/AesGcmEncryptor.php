@@ -117,7 +117,7 @@ class AesGcmEncryptor implements EncryptorInterface
         );
 
         if ($plaintext === false) {
-            throw new EncryptException('Decryption failed.');
+            return null;
         }
 
         return $plaintext;
