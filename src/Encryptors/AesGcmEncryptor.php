@@ -74,14 +74,6 @@ class AesGcmEncryptor implements EncryptorInterface
             $associatedData
         );
 
-        dump(openssl_error_string());
-        dump($data);
-        dump($iv);
-        dump($tag);
-        dump($ciphertext);
-        dump(base64_encode($key));
-        dump($columnName ?? '');
-        dump($ivsize);
         if ($ciphertext === false) {
             throw new EncryptException('Encryption failed.');
         }
@@ -124,14 +116,6 @@ class AesGcmEncryptor implements EncryptorInterface
             $columnName ?? ''
         );
 
-        dump(openssl_error_string());
-        dump(base64_encode($data));
-        dump($iv);
-        dump($tag);
-        dump($ciphertext);
-        dump(base64_encode($key));
-        dump($columnName ?? '');
-        dump($ivsize);
         if ($plaintext === false) {
             throw new EncryptException('Decryption failed.');
         }
