@@ -118,7 +118,7 @@ class AesGcmEncryptor implements EncryptorInterface
         );
 
         if ($plaintext === false) {
-            return null;
+            return '';
         }
 
         return $plaintext;
