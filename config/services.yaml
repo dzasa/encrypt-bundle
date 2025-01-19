@@ -38,6 +38,7 @@ services:
         arguments:
             $encryptKey: '%spec_shaper_encrypt.encrypt_key%'
             $encryptorClass: '%spec_shaper_encrypt.encryptor_class%'
+            $defaultAssociatedData: '%spec_shaper_encrypt.default_associated_data%'
 
     # CLI command to encrypt or decrypt all fields in a database
     SpecShaper\EncryptBundle\Command\EncryptDatabaseCommand:
