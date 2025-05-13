@@ -23,7 +23,7 @@ class SpecShaperEncryptExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../../config'));
+        $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__ . '/../../config'));
         $loader->load('services.yaml');
 
         if ($container->hasParameter('encrypt_key')) {
@@ -33,13 +33,13 @@ class SpecShaperEncryptExtension extends Extension
             $encryptKey = $config['encrypt_key'];
         }
 
-        $container->setParameter($this->getAlias().'.encrypt_key', $encryptKey);
-        $container->setParameter($this->getAlias().'.default_associated_data', $config['default_associated_data']);
-        $container->setParameter($this->getAlias().'.method', $config['method']);
-        $container->setParameter($this->getAlias().'.listener_class', $config['listener_class']);
-        $container->setParameter($this->getAlias().'.encryptor_class', $config['encryptor_class']);
-        $container->setParameter($this->getAlias().'.annotation_classes', $config['annotation_classes']);
-        $container->setParameter($this->getAlias().'.is_disabled', $config['is_disabled']);
+        $container->setParameter($this->getAlias() . '.encrypt_key', $encryptKey);
+        $container->setParameter($this->getAlias() . '.default_associated_data', $config['default_associated_data']);
+        $container->setParameter($this->getAlias() . '.method', $config['method']);
+        $container->setParameter($this->getAlias() . '.listener_class', $config['listener_class']);
+        $container->setParameter($this->getAlias() . '.encryptor_class', $config['encryptor_class']);
+        $container->setParameter($this->getAlias() . '.annotation_classes', $config['annotation_classes']);
+        $container->setParameter($this->getAlias() . '.is_disabled', $config['is_disabled']);
 
         $doctrineListener = new Definition($config['listener_class']);
         $doctrineListener
@@ -62,7 +62,7 @@ class SpecShaperEncryptExtension extends Extension
             ]);
 
             $doctrineListener->addTag('doctrine.event_listener', [
-                'event' => 'postUpdate',
+                'event' => 'preUpdate',
                 'priority' => 500,
                 'connection' => $connectionName,
             ]);
