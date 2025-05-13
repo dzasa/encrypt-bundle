@@ -157,7 +157,7 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
             }
 
             if (is_object($value)) {
-                throw new EncryptException('Cannot encrypt an object at '.$refProperty->class.':'.$refProperty->getName(), $value);
+                throw new EncryptException('Cannot encrypt an object at ' . $refProperty->class . ':' . $refProperty->getName(), $value);
             }
 
             // Encryption is fired by onFlush event, else it is an onLoad event.
@@ -166,12 +166,20 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
 
                 // Encrypt value only if change has been detected by Doctrine (comparing unencrypted values, see postLoad flow)
                 if (isset($changeSet[$field])) {
-                    $encryptedValue = $this->encryptor->encrypt($value, $field);
+                    // Save the original change set values
+                    $originalChangeSet = $changeSet[$field];
+                    $oldValue = $originalChangeSet[0];
+                    $newValue = $originalChangeSet[1];
+
+                    // Encrypt the new value
+                    $encryptedValue = $this->encryptor->encrypt($newValue, $field);
                     $refProperty->setValue($entity, $encryptedValue);
-                    $unitOfWork->recomputeSingleEntityChangeSet($meta, $entity);
+
+                    // Manually update the change set to maintain old (decrypted) and new (encrypted) values
+                    $unitOfWork->propertyChanged($entity, $field, $oldValue, $encryptedValue);
 
                     // Will be restored during postUpdate cycle for updates, or below for inserts
-                    $this->rawValues[$oid][$field] = $value;
+                    $this->rawValues[$oid][$field] = $newValue;
                 }
             } else {
                 // Decryption is fired by onLoad and postFlush events.
@@ -246,7 +254,7 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
     {
 
         // If PHP8, and has attributes.
-        if(method_exists($refProperty, 'getAttributes')) {
+        if (method_exists($refProperty, 'getAttributes')) {
             foreach ($refProperty->getAttributes() as $refAttribute) {
                 if (in_array($refAttribute->getName(), $this->annotationArray)) {
                     return true;
