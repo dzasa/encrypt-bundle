@@ -15,7 +15,7 @@ use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
  * Doctrine event listener which encrypts/decrypts entities.
  */
 #[AsDoctrineListener(event: Events::postLoad, priority: 500)]
-#[AsDoctrineListener(event: Events::preUpdate, priority: 500)]
+#[AsDoctrineListener(event: Events::postUpdate, priority: 500)]
 #[AsDoctrineListener(event: Events::onFlush, priority: 500)]
 class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
 {
@@ -178,7 +178,7 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
                     // Manually update the change set to maintain old (decrypted) and new (encrypted) values
                     $unitOfWork->propertyChanged($entity, $field, $oldValue, $encryptedValue);
 
-                    // Will be restored during preUpdate cycle for updates, or below for inserts
+                    // Will be restored during postUpdate cycle for updates, or below for inserts
                     $this->rawValues[$oid][$field] = $newValue;
                 }
             } else {
@@ -204,7 +204,7 @@ class DoctrineEncryptListener implements DoctrineEncryptListenerInterface
         return true;
     }
 
-    public function preUpdate(LifecycleEventArgs $args): void
+    public function postUpdate(LifecycleEventArgs $args): void
     {
         $entity = $args->getObject();
         $oid = spl_object_id($entity);

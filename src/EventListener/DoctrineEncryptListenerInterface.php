@@ -33,7 +33,7 @@ interface DoctrineEncryptListenerInterface
      * After we have persisted the entities, we want to have the
      * decrypted information available once more.
      */
-    public function preUpdate(LifecycleEventArgs $args): void;
+    public function postUpdate(LifecycleEventArgs $args): void;
 
     /**
      * Listen a postLoad lifecycle event. Checking and decrypt entities

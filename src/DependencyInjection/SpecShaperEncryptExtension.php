@@ -62,7 +62,7 @@ class SpecShaperEncryptExtension extends Extension
             ]);
 
             $doctrineListener->addTag('doctrine.event_listener', [
-                'event' => 'preUpdate',
+                'event' => 'postUpdate',
                 'priority' => 500,
                 'connection' => $connectionName,
             ]);
